@@ -17,8 +17,11 @@ RUN uv sync --frozen --no-dev
 #copy the rest of the application
 COPY . .
 
+#add src to python path
+ENV PYTHONPATH=/app/src
+
 #expose api port
 EXPOSE 8000
 
 #command to run the application
-CMD ["uv", "run", "uvicorn", "src.exotic_lab.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "exotic_lab.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
