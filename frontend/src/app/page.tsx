@@ -4,13 +4,15 @@ import { useState } from "react";
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { Play, RotateCcw, TrendingUp, Activity, CheckCircle, AlertCircle } from "lucide-react";
+import { Play, RotateCcw, TrendingUp, Activity, CheckCircle, AlertCircle, BarChart3 } from "lucide-react";
 
 // --- Types ---
 interface SimulationResult {
@@ -26,6 +28,10 @@ interface SimulationResult {
     theta: number;
     rho: number;
   };
+  distribution: { // New Field for Histogram
+    value: number; 
+    probability: number 
+  }[]; 
 }
 
 interface ValidationResult {
@@ -64,6 +70,7 @@ export default function Home() {
     T: 1,
     r: 0.05,
     sigma: 0.2,
+    q: 0.0,
     steps: 100,
     n_sims: 10000,
     use_antithetic: true,
@@ -74,7 +81,7 @@ export default function Home() {
   const runSimulation = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://127.0.0.1:8000/price/asian", {
+      const response = await fetch("http://localhost:8000/price/asian", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(params),
@@ -95,12 +102,12 @@ export default function Home() {
     try {
         // Run both validation endpoints in parallel
         const [valRes, convRes] = await Promise.all([
-            fetch("http://127.0.0.1:8000/validate/european", {
+            fetch("http://localhost:8000/validate/european", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(params),
             }),
-            fetch("http://127.0.0.1:8000/analytics/convergence", {
+            fetch("http://localhost:8000/analytics/convergence", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(params),
@@ -199,6 +206,7 @@ export default function Home() {
                 { label: "Strike Price (K)", key: "K" },
                 { label: "Volatility (σ)", key: "sigma", step: 0.01 },
                 { label: "Risk-free Rate (r)", key: "r", step: 0.01 },
+                { label: "Dividend Yield (q)", key: "q", step: 0.01 },
                 { label: "Time (T Years)", key: "T", step: 0.1 },
                 { label: "Simulations (N)", key: "n_sims", step: 1000 },
               ].map((field) => (
@@ -307,7 +315,7 @@ export default function Home() {
                         </div>
                     )}
 
-                    {/* Main Chart */}
+                    {/* Main Line Chart */}
                     <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-2">
@@ -323,7 +331,7 @@ export default function Home() {
                             )}
                         </div>
 
-                        <div className="h-[400px] w-full">
+                        <div className="h-[350px] w-full">
                             {chartData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={chartData}>
@@ -377,6 +385,39 @@ export default function Home() {
                             )}
                         </div>
                     </div>
+
+                    {/* Payoff Histogram (Fixed TS Error) */}
+                    {data && data.distribution && (
+                      <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                        <div className="flex items-center gap-2 mb-6">
+                          <BarChart3 className="w-5 h-5 text-blue-600" />
+                          <h3 className="font-semibold text-gray-900">Payoff Distribution</h3>
+                        </div>
+                        <div className="h-[300px] w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={data.distribution}>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                              <XAxis 
+                                dataKey="value" 
+                                tickFormatter={(val) => `$${Number(val).toFixed(0)}`} 
+                                tick={{ fontSize: 12 }} 
+                                stroke="#9ca3af"
+                                tickLine={false}
+                                axisLine={false}
+                              />
+                              <Tooltip 
+                                cursor={{ fill: '#f9fafb' }}
+                                contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                                labelFormatter={(val) => `Payoff: ~$${Number(val).toFixed(2)}`}
+                                // FIX: Use any to bypass strict Recharts type issue
+                                formatter={(val: any) => [`${(Number(val) * 100).toFixed(1)}%`, 'Probability']}
+                              />
+                              <Bar dataKey="probability" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    )}
                 </>
             )}
 

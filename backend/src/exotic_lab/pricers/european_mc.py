@@ -2,14 +2,14 @@ import numpy as np
 from exotic_lab.models.gbm import simulate_gbm_paths
 
 def price_european_mc(
-    S0: float, K: float, T: float, r: float, sigma: float, steps: int = 100, n_sims: int = 10000, option_type: str = "call", use_antithetic: bool = True
+    S0: float, K: float, T: float, r: float, sigma: float, q: float, steps: int = 100, n_sims: int = 10000, option_type: str = "call", use_antithetic: bool = True
 ) -> dict:
     
     """
     mc for european options where the payoff depends only on the final step and not the path average
     """
 
-    paths = simulate_gbm_paths(S0, T, r, sigma, steps, n_sims, use_antithetic)
+    paths = simulate_gbm_paths(S0, T, r, sigma, q, steps, n_sims, use_antithetic)
 
     #european option payoff = S_T which si the last column of the path
     final_prices = paths[:, -1]
