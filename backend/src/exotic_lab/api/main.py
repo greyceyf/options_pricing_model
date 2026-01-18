@@ -6,6 +6,8 @@ import time
 #imports the math engine functions
 from exotic_lab.pricers.asian_mc import price_asian_option
 from exotic_lab.greeks.finite_diff import calculate_greeks
+from exotic_lab.pricers.black_scholes import black_scholes_price 
+from exotic_lab.pricers.european_mc import price_european_mc
 
 app = FastAPI()
 
@@ -56,3 +58,66 @@ async def calculate_price(req: PricingRequest):
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+
+#validation endpoint
+@app.post("/validate/european")
+async def validate_model(req: PricingRequest):
+
+    """
+    compares monte carlo result against black-scholes analytical formula
+    """
+
+    #exact price with black-scholes
+    bs_price = black_scholes_price(req.S0, req.K, req.T, req.r, req.sigma, "call")
+
+    #approximate the price with monte carlo
+    mc_result = price_european_mc(
+        req.S0, req.K, req.T, req.r, req.sigma, req.steps, req.n_sims, "call", req.use_antithetic
+    )
+    mc_price = mc_result["price"]
+    error = abs(mc_price - bs_price)
+    error_precent = (error / bs_price) * 100
+
+    #check if bsm result is within the mc confidence interval (the standard for validation)
+    ci_low, ci_high = mc_result["conf_interval_95"]
+    is_valid = ci_low <= bs_price <= ci_high
+
+    return{
+        "bs_price": bs_price,
+        "mc_price": mc_price,
+        "error_abs": error,
+        "error_percent": error_precent,
+        "within_confidence_interval": is_valid,
+        "conf_interval_95": mc_result["conf_interval_95"]
+    }
+
+@app.post("/analytics/convergence")
+async def convergence_analysis(req: PricingRequest):
+    """
+    runs simulatio with increasing N to visualize convergence
+    """
+
+    sim_counts = [100, 500, 1000, 5000, 10000, 20000]
+    results = []
+
+    #calcualtes the true bsm price
+    bs_price = black_scholes_price(req.S0, req.K, req.T, req.r, req.sigma, "call")
+
+    for n in sim_counts:
+        #runs asian pricer but can also run european to check against bsm
+        res = price_asian_option(
+            req.S0, req.K, req.T, req.r, req.sigma, req.steps, n, "call", req.use_antithetic
+        )
+        results.append({
+            "simulations": n,
+            "price": res["price"],
+            "ci_lower": res["conf_interval_95"][0],
+            "ci_upper": res["conf_interval_95"][1]
+        })
+
+    return{
+        "bs_price_ref": bs_price, #reference for european and context for asian
+        "convergence_data": results
+    }
+
