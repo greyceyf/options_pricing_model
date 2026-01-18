@@ -18,9 +18,17 @@ interface SimulationResult {
   price: number;
   std_error: number;
   conf_interval_95: [number, number];
-  paths_sample: number[][]; // Array of arrays (rows are paths)
+  paths_sample: number[][];
   runtime_ms: number;
+  greeks: { // New Field
+    delta: number;
+    gamma: number;
+    vega: number;
+    theta: number;
+    rho: number;
+  };
 }
+
 
 interface ChartDataPoint {
   step: number;
@@ -41,6 +49,7 @@ export default function Home() {
     sigma: 0.2,
     steps: 100,
     n_sims: 10000,
+    use_antithetic: true, // New Default
   });
 
   const runSimulation = async () => {
@@ -128,14 +137,34 @@ export default function Home() {
                   <input
                     type="number"
                     step={field.step || 1}
-                    value={params[field.key as keyof typeof params]}
+                    // FIX: Cast the value as number to satisfy TypeScript
+                    value={params[field.key as keyof typeof params] as number}
                     onChange={(e) =>
-                      setParams({ ...params, [field.key]: parseFloat(e.target.value) })
+                      setParams({
+                        ...params,
+                        [field.key]: parseFloat(e.target.value),
+                      })
                     }
                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-900"
                   />
                 </div>
               ))}
+            </div>
+
+            {/* Antithetic Toggle */}
+            <div className="flex items-center gap-3 pt-2">
+              <input
+                type="checkbox"
+                id="antithetic"
+                checked={params.use_antithetic}
+                onChange={(e) =>
+                  setParams({ ...params, use_antithetic: e.target.checked })
+                }
+                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
+              />
+              <label htmlFor="antithetic" className="text-sm font-medium text-gray-700">
+                Use Antithetic Variates
+              </label>
             </div>
 
             <button
@@ -154,6 +183,31 @@ export default function Home() {
 
           {/* Right Column: Visualization & Results */}
           <div className="lg:col-span-2 space-y-6">
+
+            {/* Greeks Grid */}
+            {data && (
+              <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  Risk Metrics (Greeks)
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  {[
+                    { label: "Delta (Δ)", value: data.greeks.delta },
+                    { label: "Gamma (Γ)", value: data.greeks.gamma },
+                    { label: "Vega (ν)", value: data.greeks.vega },
+                    { label: "Theta (Θ)", value: data.greeks.theta },
+                    { label: "Rho (ρ)", value: data.greeks.rho },
+                  ].map((greek) => (
+                    <div key={greek.label} className="p-3 bg-gray-50 rounded-lg text-center">
+                      <p className="text-xs text-gray-500 mb-1">{greek.label}</p>
+                      <p className="font-mono font-medium text-gray-900">
+                        {greek.value.toFixed(4)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             
             {/* KPI Cards */}
             {data && (

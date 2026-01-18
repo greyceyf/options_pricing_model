@@ -22,7 +22,7 @@ def price_asian_option(
     price = discount_factor * np.mean(payoffs)
 
     #statistical significance metric (standard error and standard deviation)
-    std_dev = np.exp(payoffs)
+    std_dev = np.std(payoffs)
     std_error = discount_factor * (std_dev / np.sqrt(len(payoffs)))
 
     return{
