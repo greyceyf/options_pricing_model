@@ -1,0 +1,20 @@
+services:
+  #python backend
+  api:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app  #hot-reloading
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  #next.js frontend
+  web:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
