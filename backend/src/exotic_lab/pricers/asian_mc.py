@@ -2,11 +2,11 @@ import numpy as np
 from exotic_lab.models.gbm import simulate_gbm_paths
 
 def price_asian_option(
-    S0: float, K: float, T: float, r: float, sigma: float, steps: int = 100, n_sims: int = 10000, option_type: str = "call"
+    S0: float, K: float, T: float, r: float, sigma: float, steps: int = 100, n_sims: int = 10000, option_type: str = "call", use_antithetic: bool = True
 ) -> dict:
     
     #run simulation
-    paths = simulate_gbm_paths(S0, T, r, sigma, steps, n_sims)
+    paths = simulate_gbm_paths(S0, T, r, sigma, steps, n_sims, use_antithetic)
 
     #average the prices (asian option logic)
     average_prices = np.mean(paths[:, 1:], axis = 1)
@@ -22,8 +22,8 @@ def price_asian_option(
     price = discount_factor * np.mean(payoffs)
 
     #statistical significance metric (standard error and standard deviation)
-    std_dev = np.exp(-r * T)
-    std_error = discount_factor * (std_dev / np.sqrt(n_sims))
+    std_dev = np.exp(payoffs)
+    std_error = discount_factor * (std_dev / np.sqrt(len(payoffs)))
 
     return{
         "price": float(price), 
