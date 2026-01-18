@@ -1,0 +1,28 @@
+name: Quant CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+  jobs:
+    test-backend:
+      runs-on: ubuntu-latest
+
+      steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+      
+      - name: Set up Python
+        run: uv python install 3.12
+        
+      - name: Install dependencies
+        working-directory: ./backend
+        run: uv sync --all-extras --dev
+        
+      - name: Run Tests
+        working-directory: ./backend
+        run: uv run pytest
